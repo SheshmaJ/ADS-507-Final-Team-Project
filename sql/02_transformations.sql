@@ -16,8 +16,10 @@ DROP TABLE IF EXISTS shortages_with_ndc;
 
 CREATE TABLE shortages_with_ndc AS
 SELECT 
+    -- Generate row ID
+    ROW_NUMBER() OVER (ORDER BY s.package_ndc) as shortage_id,
+    
     -- Shortage information
-    s.shortage_id,
     s.package_ndc,
     s.generic_name AS shortage_generic_name,
     s.company_name,

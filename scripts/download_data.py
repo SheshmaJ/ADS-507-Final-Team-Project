@@ -44,11 +44,15 @@ except Exception as e:
 print("\n2. Downloading Drug Shortages dataset...")
 
 shortages_url = "https://download.open.fda.gov/drug/shortages/drug-shortages-0001-of-0001.json.zip"
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 try:
     response = requests.get(shortages_url)
     response.raise_for_status()
     
+<<<<<<< Updated upstream
     print("   Download complete. Extracting...")
     
     # Extract zip file
@@ -57,6 +61,20 @@ try:
         z.extractall("data")
     
     print("   ✓ Drug Shortages dataset downloaded and extracted to data/")
+=======
+    
+    # Save raw JSON
+    #with open('data/drug_shortages_raw.json', 'w') as f:
+    #    json.dump(response.json(), f)
+    # print("   Download complete. Extracting...")
+
+    zip_bytes = io.BytesIO(response.content)
+    with zipfile.ZipFile(zip_bytes) as z:
+        z.extractall("data")
+
+
+    print("   ✓ Drug Shortages dataset downloaded to data/")
+>>>>>>> Stashed changes
     
 except Exception as e:
     print(f"   ✗ Error downloading Drug Shortages dataset: {e}")

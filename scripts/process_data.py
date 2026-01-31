@@ -66,28 +66,52 @@ except Exception as e:
 print("\n2. Processing Drug Shortages dataset...")
 
 try:
-    # Note: This is a placeholder - you'll need to get actual drug shortage data
-    # from FDA's drug shortage database at:
-    # https://www.accessdata.fda.gov/scripts/drugshortages/default.cfm
+    # Load the drug shortage JSON file
+    with open('data/drug-shortages-0001-of-0001.json', 'r') as f:
+        shortage_data = json.load(f)
     
-    # For now, create a simple structure that matches what you'll need
-    print("   Note: Using placeholder for drug shortage data")
-    print("   You'll need to download actual shortage data from FDA drug shortage database")
+    # Extract results into DataFrame
+    df_shortages = pd.DataFrame(shortage_data['results'])
+    print(f"   Loaded {len(df_shortages)} shortage records")
     
-    # Create empty template
-    shortage_template = pd.DataFrame(columns=[
-        'package_ndc', 'generic_name', 'company_name', 'status',
-        'therapeutic_category', 'initial_posting_date', 'update_date',
-        'dosage_form', 'reason'
-    ])
+    # Create core shortage table with fields that actually exist
+    shortage_core = pd.DataFrame({
+        'package_ndc': df_shortages.get('package_ndc'),
+        'generic_name': df_shortages.get('generic_name'),
+        'company_name': df_shortages.get('company_name'),
+        'status': df_shortages.get('status'),
+        'therapeutic_category': df_shortages.get('therapeutic_category'),
+        'initial_posting_date': df_shortages.get('initial_posting_date'),
+        'update_date': df_shortages.get('update_date'),
+        'dosage_form': df_shortages.get('presentation'),  # Use presentation field
+        'reason': None  # Not available in FDA data
+    })
     
-    shortage_template.to_csv('data/drug_shortages_core.csv', index=False)
-    print("   ✓ Created drug_shortages_core.csv template")
+    # Save core shortage table
+    shortage_core.to_csv('data/drug_shortages_core.csv', index=False)
+    print(f"   ✓ Created drug_shortages_core.csv ({len(shortage_core)} shortages)")
     
-    # Create contacts template
-    contacts_template = pd.DataFrame(columns=['package_ndc', 'contact_info'])
-    contacts_template.to_csv('data/shortage_contacts.csv', index=False)
-    print("   ✓ Created shortage_contacts.csv template")
+    # Extract contact information
+    contact_records = []
+    for idx, row in df_shortages.iterrows():
+        package_ndc = row.get('package_ndc')
+        contact_info = row.get('contact_info')
+        
+        if contact_info:
+            contact_records.append({
+                'package_ndc': package_ndc,
+                'contact_info': str(contact_info)
+            })
+    
+    if len(contact_records) > 0:
+        shortage_contacts = pd.DataFrame(contact_records)
+        shortage_contacts.to_csv('data/shortage_contacts.csv', index=False)
+        print(f"   ✓ Created shortage_contacts.csv ({len(shortage_contacts)} contacts)")
+    else:
+        # Create empty template if no contacts
+        shortage_contacts = pd.DataFrame(columns=['package_ndc', 'contact_info'])
+        shortage_contacts.to_csv('data/shortage_contacts.csv', index=False)
+        print(f"   ✓ Created shortage_contacts.csv (empty - no contacts in data)")
     
 except Exception as e:
     print(f"   ✗ Error processing Drug Shortages dataset: {e}")

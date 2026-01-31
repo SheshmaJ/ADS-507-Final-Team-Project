@@ -16,8 +16,10 @@ DROP TABLE IF EXISTS shortages_with_ndc;
 
 CREATE TABLE shortages_with_ndc AS
 SELECT 
+    -- Generate row ID
+    ROW_NUMBER() OVER (ORDER BY s.package_ndc) as shortage_id,
+    
     -- Shortage information
-    s.shortage_id,
     s.package_ndc,
     s.generic_name AS shortage_generic_name,
     s.company_name,
@@ -51,9 +53,9 @@ LEFT JOIN raw_ndc n
     ON p.product_ndc = n.product_ndc;
 
 -- Add indexes for better query performance
-CREATE INDEX idx_status ON shortages_with_ndc(status);
-CREATE INDEX idx_company ON shortages_with_ndc(company_name);
-CREATE INDEX idx_product_ndc ON shortages_with_ndc(product_ndc);
+CREATE INDEX idx_status ON shortages_with_ndc(status(50));
+CREATE INDEX idx_company ON shortages_with_ndc(company_name(100));
+CREATE INDEX idx_product_ndc ON shortages_with_ndc(product_ndc(30));
 
 -- ============================================
 -- ANALYSIS VIEW 1: Current Package Shortages

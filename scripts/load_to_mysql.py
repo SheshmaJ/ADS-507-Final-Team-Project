@@ -66,7 +66,7 @@ for csv_file, table_name in csv_table_mapping.items():
         print(f"  - Read {len(df)} rows from CSV")
         
         # Load into MySQL
-        # if_exists='replace' will drop and recreate the table
+        # if_exists='append' will drop and recreate the table
         # Use 'append' if you want to add to existing data
         df.to_sql(
             name=table_name,

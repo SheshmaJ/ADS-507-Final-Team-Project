@@ -67,7 +67,7 @@ print("\n2. Processing Drug Shortages dataset...")
 
 try:
     # Load the drug shortage JSON file
-    with open('data/drug-shortage-0001-of-0001.json', 'r') as f:
+    with open('data/drug-shortages-0001-of-0001.json', 'r') as f:
         shortage_data = json.load(f)
     
     # Extract results into DataFrame

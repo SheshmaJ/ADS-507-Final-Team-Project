@@ -28,8 +28,8 @@ CREATE TABLE raw_ndc (
     product_type VARCHAR(150),
     marketing_start_date VARCHAR(20),
     application_number VARCHAR(50),
-    INDEX idx_labeler (labeler_name),
-    INDEX idx_brand (brand_name)
+    INDEX idx_labeler (labeler_name(255)),
+    INDEX idx_brand (brand_name(255))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================

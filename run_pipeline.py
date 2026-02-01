@@ -4,45 +4,46 @@
 #process data
 #load to MYSQL
 
+import os
 import subprocess
 import sys
 
 
-def run(cmd: list[str]) -> None:
-    """Run a command and stop pipeline if it fails."""
-    print(f"Running: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True)
+def run(cmd, use_shell=False):
+    print(f"Running: {cmd}")
+    subprocess.run(cmd, shell=use_shell, check=True)
 
 
-def main() -> None:
+def main():
     try:
-        # Download raw data
-        run(["python", "scripts/download_data.py"])
+        # 1. Download data
+        run("python scripts/download_data.py", use_shell=True)
 
-        # Process raw data into CSVs
-        run(["python", "scripts/process_data.py"])
+        # 2. Process data
+        run("python scripts/process_data.py", use_shell=True)
 
-        # Load CSVs into MySQL
-        run(["python", "scripts/load_to_mysql.py"])
+        # 3. Load data to MySQL
+        run("python scripts/load_to_mysql.py", use_shell=True)
 
-        # Run SQL transformations
-        run([
-            "mysql",
-            "-h", "127.0.0.1",
-            "-u", "root",
-            "-prootpassword",
-            "fda_shortage_db",
-            "<", "sql/02_transformations.sql"
-        ])
+        # 4. Run SQL transformations (IMPORTANT FIX)
+        run(
+            f"""
+            mysql -h {os.environ['DB_HOST']} \
+                  -P {os.environ['DB_PORT']} \
+                  -u {os.environ['DB_USER']} \
+                  -p{os.environ['DB_PASSWORD']} \
+                  {os.environ['DB_NAME']} \
+                  < sql/02_transformations.sql
+            """,
+            use_shell=True
+        )
 
         print("ETL pipeline completed successfully.")
 
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("ETL pipeline failed.")
         sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-
-

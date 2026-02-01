@@ -20,7 +20,7 @@ CREATE TABLE raw_ndc (
     product_ndc VARCHAR(20) PRIMARY KEY,
     generic_name TEXT,
     labeler_name TEXT,
-    brand_name LONGTEXT,
+    brand_name TEXT,
     finished TINYINT(1),
     marketing_category VARCHAR(100),
     dosage_form TEXT,
@@ -56,16 +56,16 @@ CREATE TABLE raw_drug_shortages (
     shortage_id INT AUTO_INCREMENT PRIMARY KEY,
     package_ndc VARCHAR(30),
     generic_name TEXT,
-    company_name VARCHAR(255),
+    company_name TEXT,
     status VARCHAR(50),
-    therapeutic_category VARCHAR(100),
+    therapeutic_category TEXT,
     initial_posting_date VARCHAR(20),
     update_date VARCHAR(20),
     dosage_form TEXT,
     reason TEXT,
     INDEX idx_package_ndc (package_ndc),
     INDEX idx_status (status),
-    INDEX idx_company (company_name)
+    INDEX idx_company (company_name(255))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE raw_drug_shortages

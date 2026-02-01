@@ -62,6 +62,49 @@ def load_csv(conn, csv_path: str, table_name: str) -> int:
     )
     return len(df)
 
+def load_shortage_contacts(conn, csv_path: str) -> int:
+    """
+    Convert package_ndc in CSV -> shortage_id in DB, then insert.
+    Assumes shortage_contacts table has columns: shortage_id, contact_info
+    """
+    df = pd.read_csv(csv_path)
+
+    # If the file is empty, just do nothing safely
+    if df.empty:
+        return 0
+
+    # Pull mapping from DB: package_ndc -> one shortage_id
+    # (We take MIN(shortage_id) for that package_ndc to keep it deterministic)
+    mapping_df = pd.read_sql(
+        """
+        SELECT package_ndc, MIN(shortage_id) AS shortage_id
+        FROM raw_drug_shortages
+        WHERE package_ndc IS NOT NULL AND package_ndc <> ''
+        GROUP BY package_ndc
+        """,
+        conn,
+    )
+    # Merge to get shortage_id
+    df["package_ndc"] = df["package_ndc"].astype(str).str.strip()
+    merged = df.merge(mapping_df, on="package_ndc", how="left")
+
+    # Keep only rows that successfully mapped to a shortage_id (required FK)
+    merged = merged.dropna(subset=["shortage_id"])
+
+     # Build final dataframe matching the DB table
+    out = merged[["shortage_id", "contact_info"]].copy()
+    out["shortage_id"] = out["shortage_id"].astype(int)
+
+    out.to_sql(
+        name="shortage_contacts",
+        con=conn,
+        if_exists="append",
+        index=False,
+        chunksize=2000,
+        method="multi",
+    )
+    return len(out)
+
 
 def main() -> None:
     print("Starting data load to MySQL (pipeline-safe)...")
@@ -71,11 +114,14 @@ def main() -> None:
         ("data/ndc_core.csv", "raw_ndc"),
         ("data/ndc_packaging.csv", "raw_ndc_packaging"),
         ("data/drug_shortages_core.csv", "raw_drug_shortages"),
-        ("data/shortage_contacts.csv", "shortage_contacts"),
+        
     ]
+    # Contacts require mapping (package_ndc -> shortage_id)
+    contacts_csv = "data/shortage_contacts.csv"
 
     for csv_path, _ in csv_plan:
         require_file(csv_path)
+    require_file(contacts_csv)    
 
     engine = get_engine()
 
@@ -90,6 +136,9 @@ def main() -> None:
                 print(f" Loading {csv_path} into {table_name}...")
                 rows = load_csv(conn, csv_path, table_name)
                 print(f" Inserted {rows:,} rows into {table_name}")
+            print(f" Loading {contacts_csv} into shortage_contacts (mapping shortage_id)...")
+            rows = load_shortage_contacts(conn, contacts_csv)
+            print(f" Inserted {rows:,} rows into shortage_contacts")    
 
         # verification
         with engine.connect() as conn:
@@ -97,7 +146,8 @@ def main() -> None:
             for _, table_name in csv_plan:
                 cnt = conn.execute(text(f"SELECT COUNT(*) FROM {table_name};")).scalar()
                 print(f"  {table_name}: {int(cnt):,} rows")
-
+            cnt = conn.execute(text("SELECT COUNT(*) FROM shortage_contacts;")).scalar()
+            print(f"  shortage_contacts: {int(cnt):,} rows")
         print("\n Data load completed successfully.")
 
     finally:

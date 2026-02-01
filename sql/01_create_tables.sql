@@ -68,8 +68,6 @@ CREATE TABLE raw_drug_shortages (
     INDEX idx_company (company_name(255))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-ALTER TABLE raw_drug_shortages
-ADD UNIQUE KEY uq_package_ndc (package_ndc);
 
 -- ============================================
 -- Table 4: Shortage Contact Information
@@ -77,12 +75,12 @@ ADD UNIQUE KEY uq_package_ndc (package_ndc);
 -- ============================================
 CREATE TABLE shortage_contacts (
     contact_id INT AUTO_INCREMENT PRIMARY KEY,
-    package_ndc VARCHAR(30),
+    shortage_id INT NOT NULL,
     contact_info TEXT,
-    FOREIGN KEY (package_ndc) REFERENCES raw_drug_shortages(package_ndc)
+    FOREIGN KEY (shortage_id) REFERENCES raw_drug_shortages(shortage_id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    INDEX idx_package_ndc (package_ndc)
+    INDEX idx_shortage_id (shortage_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================

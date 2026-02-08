@@ -2,15 +2,11 @@
 -- SQL Transformations - CRITICAL FOR RUBRIC
 -- This file contains the required SQL transformation:
 -- Joins drug shortages with NDC data to create enriched dataset
+-- MAIN TRANSFORMATION: Join Shortages with NDC Data
+-- This LEFT JOIN enriches shortage data with product details
 -- ============================================
 
 USE fda_shortage_db;
-
--- ============================================
--- MAIN TRANSFORMATION: Join Shortages with NDC Data
--- This LEFT JOIN enriches shortage data with product details
--- Satisfies project requirement for SQL transformation
--- ============================================
 
 DROP TABLE IF EXISTS shortages_with_ndc;
 
@@ -24,6 +20,8 @@ CREATE TABLE shortages_with_ndc (
   therapeutic_category TEXT,
   initial_posting_date VARCHAR(20),
   update_date VARCHAR(20),
+  initial_posting_date_dt DATE,
+  update_date_dt DATE,
   shortage_dosage_form TEXT,
   reason TEXT,
 
@@ -56,6 +54,21 @@ SELECT
     s.therapeutic_category,
     s.initial_posting_date,
     s.update_date,
+    CASE
+      WHEN s.initial_posting_date REGEXP '^[0-9]{8}$'
+      THEN STR_TO_DATE(s.initial_posting_date, '%Y%m%d')
+      WHEN s.initial_posting_date REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$'
+      THEN STR_TO_DATE(s.initial_posting_date, '%m/%d/%Y')
+      ELSE NULL
+    END AS initial_posting_date_dt,
+
+    CASE
+      WHEN s.update_date REGEXP '^[0-9]{8}$'
+      THEN STR_TO_DATE(s.update_date, '%Y%m%d')
+      WHEN s.update_date REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$'
+      THEN STR_TO_DATE(s.update_date, '%m/%d/%Y')
+      ELSE NULL
+    END AS update_date_dt,
     s.dosage_form AS shortage_dosage_form,
     s.reason,
     
@@ -86,6 +99,11 @@ LEFT JOIN raw_ndc n
 CREATE INDEX idx_status ON shortages_with_ndc(status);
 CREATE INDEX idx_company ON shortages_with_ndc(company_name);
 CREATE INDEX idx_product_ndc ON shortages_with_ndc(product_ndc);
+
+-- Added indexes for parsed dates
+CREATE INDEX idx_initial_posting_date_dt ON shortages_with_ndc(initial_posting_date_dt);
+CREATE INDEX idx_update_date_dt ON shortages_with_ndc(update_date_dt);
+
 
 -- ============================================
 -- ANALYSIS VIEW 1: Current Package Shortages

@@ -69,7 +69,7 @@ SELECT
 FROM shortages_with_ndc
 WHERE status = 'Current'
     AND product_type IS NOT NULL
-    AND initial_posting_date IS NOT NULL
+    AND initial_posting_date_dt IS NOT NULL
 GROUP BY product_type
 ORDER BY current_shortages DESC;
 

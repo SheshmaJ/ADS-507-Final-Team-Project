@@ -20,7 +20,7 @@ SELECT
     ) AS join_success_pct
 FROM shortages_with_ndc;
 
---Required identifier checks identify missing identifiers that reduce analytical usefulness.
+--Checks missing identifiers that reduce analytical usefulness.
 
 SELECT
     'missing_package_ndc' AS metric,
@@ -61,7 +61,7 @@ FROM shortages_with_ndc
 WHERE initial_posting_date IS NOT NULL
   AND initial_posting_date <> ''
   AND initial_posting_date NOT REGEXP '^[0-9]{8}$';
-
+  AND initial_posting_date NOT REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$';
 SELECT
     'invalid_update_date' AS metric,
     COUNT(*) AS invalid_count
@@ -69,6 +69,7 @@ FROM shortages_with_ndc
 WHERE update_date IS NOT NULL
   AND update_date <> ''
   AND update_date NOT REGEXP '^[0-9]{8}$';
+  AND update_date NOT REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$';
 
 -- Status value distribution check provides insight into the composition of shortage records by status.
 SELECT

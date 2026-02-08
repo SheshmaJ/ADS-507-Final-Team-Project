@@ -55,20 +55,20 @@ FROM (
 --Date format sanity check verifies dates are stored as strings in the expected YYYYMMDD format.
 
 SELECT
-    'invalid_initial_posting_date' AS metric,
+    'invalid_initial_posting_date_dt' AS metric,
     COUNT(*) AS invalid_count
 FROM shortages_with_ndc
 WHERE initial_posting_date IS NOT NULL
   AND initial_posting_date <> ''
-  AND initial_posting_date NOT REGEXP '^[0-9]{8}$';
+  AND initial_posting_date NOT REGEXP '^[0-9]{8}$'
   AND initial_posting_date NOT REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$';
 SELECT
-    'invalid_update_date' AS metric,
+    'invalid_update_date_dt' AS metric,
     COUNT(*) AS invalid_count
 FROM shortages_with_ndc
 WHERE update_date IS NOT NULL
   AND update_date <> ''
-  AND update_date NOT REGEXP '^[0-9]{8}$';
+  AND update_date NOT REGEXP '^[0-9]{8}$'
   AND update_date NOT REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$';
 
 -- Status value distribution check provides insight into the composition of shortage records by status.

@@ -4,44 +4,72 @@
 #process data
 #load to MYSQL
 
+# run_pipeline.py
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
+from pathlib import Path
+from datetime import datetime
+
+REPORT_DIR = Path("monitoring/reports")
+PIPELINE_LOG = REPORT_DIR / "pipeline.log"
 
 
-def run(cmd, use_shell=False):
-    print(f"Running: {cmd}")
-    subprocess.run(cmd, shell=use_shell, check=True)
+def log_line(msg: str) -> None:
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp} UTC] {msg}"
+    print(line)
+    PIPELINE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with PIPELINE_LOG.open("a", encoding="utf-8") as f:
+        f.write(line + "\n")
 
 
-def main():
+def run(cmd: str) -> None:
+    log_line(f"RUN: {cmd}")
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+    # write stdout/stderr into log file
+    if result.stdout:
+        with PIPELINE_LOG.open("a", encoding="utf-8") as f:
+            f.write(result.stdout + "\n")
+    if result.stderr:
+        with PIPELINE_LOG.open("a", encoding="utf-8") as f:
+            f.write(result.stderr + "\n")
+
+    if result.returncode != 0:
+        log_line(f"FAILED (exit {result.returncode}): {cmd}")
+        raise subprocess.CalledProcessError(result.returncode, cmd)
+
+
+def main() -> None:
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # reset log each run
+    PIPELINE_LOG.write_text("", encoding="utf-8")
+    log_line("Starting FDA ETL pipeline")
+
     try:
-        # 1. Download data
-        run("python scripts/download_data.py", use_shell=True)
+        run("python scripts/download_data.py")
+        run("python scripts/process_data.py")
+        run("python scripts/load_to_mysql.py")
 
-        # 2. Process data
-        run("python scripts/process_data.py", use_shell=True)
+        # SQL transformations
+        host = os.environ["DB_HOST"]
+        port = os.environ["DB_PORT"]
+        user = os.environ["DB_USER"]
+        pwd = os.environ["DB_PASSWORD"]
+        db = os.environ["DB_NAME"]
 
-        # 3. Load data to MySQL
-        run("python scripts/load_to_mysql.py", use_shell=True)
-
-        # 4. Run SQL transformations (IMPORTANT FIX)
         run(
-            f"""
-            mysql -h {os.environ['DB_HOST']} \
-                  -P {os.environ['DB_PORT']} \
-                  -u {os.environ['DB_USER']} \
-                  -p{os.environ['DB_PASSWORD']} \
-                  {os.environ['DB_NAME']} \
-                  < sql/02_transformations.sql
-            """,
-            use_shell=True
+            f'mysql -h "{host}" -P "{port}" -u "{user}" -p"{pwd}" "{db}" < sql/02_transformations.sql'
         )
 
-        print("ETL pipeline completed successfully.")
+        log_line("ETL pipeline completed successfully.")
 
     except subprocess.CalledProcessError:
-        print("ETL pipeline failed.")
+        log_line("ETL pipeline failed.")
         sys.exit(1)
 
 

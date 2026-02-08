@@ -34,6 +34,9 @@ ADS-507-Final-Team-Project/
 ├── .gitignore                 # Prevents committing large files
 └── requirements.txt           # Python dependencies
 ```
+---
+## Run the pipeline (one click)
+[![Run Pipeline](https://img.shields.io/badge/GitHub%20Actions-Run%20Pipeline-blue)](https://github.com/ngwalker93/ADS-507-Final-Team-Project/actions/workflows/pipeline_monitoring.yml)
 
 ---
 
@@ -61,34 +64,48 @@ Before running the pipeline, ensure you have:
 git clone https://github.com/ngwalker93/ADS-507-Final-Team-Project.git
 cd ADS-507-Final-Team-Project
 ```
-### Step 2: Create and Activate Virtual Environment
-
+## Step 2: Create and Activate Virtual Environment
+### Create venv
+```powershell
 python -m venv .venv
+````
 
-**Activate (PowerShell):**
+### **Activate (PowerShell):**
+> If activation is blocked, run the ExecutionPolicy command first.
 
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass ..venv\Scripts\Activate.ps1
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
 
-### Step 3: Install Python Dependencies
+## Step 3: Install Python Dependencies
 
+```powershell
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+```
 
 ## Pipeline Execution in Order
 
 ### Phase 1: Create MySQL Database
-
+```powershell
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS fda_shortage_db;"
+```
 
 ### Phase 2: Create Database Tables
-
-Get-Content sql/01_create_tables.sql | mysql -u root -p fda_shortage_db
+```powershell
+Get-Content .\sql\01_create_tables.sql | mysql -u root -p fda_shortage_db;"
+```
 
 **Expected output:
 Creates 4 raw tables:raw_ndc, raw_ndc_packaging, raw_drug_shortages,shortage_contacts*
 
 ### Phase 3: Download Raw FDA Data
 
-python scripts/download_data.py
+```powershell
+python .\scripts\download_data.py
+
+```
 
 **Expected output:
 Downloads FDA NDC dataset (~119 MB),Downloads FDA Drug Shortages dataset,Stores raw files in data*
@@ -99,7 +116,11 @@ data/drug_shortages_raw.json**
 
 ### Phase 4: Process and Clean Data
 
-python scripts/process_data.py
+```powershell
+python .\scripts\process_data.py
+
+```
+
 
 **output csv files :*
 
@@ -110,19 +131,49 @@ data/shortage_contacts.csv**
 
 ### Phase 5: Load Data into MySQL
 
+```powershell
 python scripts/load_to_mysql.py
+```
 
 **Expected output
 Loads CSVs into MySQL tables,Clears existing rows safely,Verifies row counts after load*
 
 ### Phase 6: Run SQL Transformations
+```powershell
+Get-Content .\sql\02_transformations.sql | mysql -u root -p fda_shortage_db
 
-Get-Content sql/02_transformations.sql | mysql -u root -p fda_shortage_db
+```
 
 **Expected output:
 Joins shortages with NDC data,Creates enriched views for analysis,current_package_shortages,multi_package_shortages, manufacturer_risk_analysis,current_manufacturer_risk*
 
+### Phase 7:Run monitoring checks
+```powershell
+python .\monitoring\run_monitoring.py
 
+```
+**Expected result:** a report file created in folder:
+
+* `monitoring/reports/monitoring_report.txt`
+### Phase 8:Run the Streamlit dashboard (local)
+
+### Set DB environment variables (PowerShell)
+
+```powershell
+$env:DB_USER="root"
+$env:DB_PASSWORD="YOUR_MYSQL_PASSWORD"
+$env:DB_HOST="127.0.0.1"
+$env:DB_PORT="3306"
+$env:DB_NAME="fda_shortage_db"
+```
+
+### Start the dashboard
+
+```powershell
+python -m streamlit run dashboard/app.py
+
+```
+-----
 ## Data Sources
 
 - **FDA NDC Database:** https://open.fda.gov/apis/drug/ndc/

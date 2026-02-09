@@ -18,23 +18,7 @@ This project builds a MySQL-based data pipeline that combines two FDA datasets (
 ---
 
 ## Repository Structure
-```
-ADS-507-Final-Team-Project/
-├── data/                      # Local data storage (not committed to GitHub)
-│   └── DATA_SOURCE.md         # Data source documentation
-├── docs/                      # Documentation and diagrams
-├── scripts/                   # Python automation scripts
-│   ├── download_data.py       # Downloads FDA datasets
-│   ├── process_data.py        # Cleans and processes data
-│   └── load_to_mysql.py       # Loads data into MySQL
-├── sql/                       # SQL scripts
-│   ├── 01_create_tables.sql   # Creates database structure
-│   ├── 02_transformations.sql # Joins datasets (required SQL transformation)
-│   └── 03_analysis_queries.sql# Analytical queries
-├── .gitignore                 # Prevents committing large files
-└── requirements.txt           # Python dependencies
-```
----
+
 ![Repository Structure](docs/repo_structure.png)
 
 ---

@@ -30,6 +30,46 @@ SQL_FILES = [
     "monitoring/data_quality_checks.sql",
     "sql/03_analysis_queries.sql",
 ]
+# headings for report
+STATEMENT_TITLES = {
+    "schema_snapshot.sql": {
+        1: "Check that all main tables were created",
+        2: "Show table columns to confirm the database structure",
+        3: "Check that all required views exist",
+        4: "View definition for current package shortages",
+        5: "View definition for products with multiple affected packages",
+        6: "View definition for manufacturer-level shortage risk",
+        7: "View definition for current manufacturer shortages",
+        8: "Table structure for NDC product data (raw_ndc)",
+        9: "Table structure for NDC packaging data",
+        10: "Table structure for FDA drug shortage data",
+        11: "Table structure for joined shortage and NDC data",
+    },
+
+    "pipeline_health.sql": {
+        1: "Confirm required tables exist after the pipeline run",
+        2: "Check that all main tables contain data",
+        3: "Confirm the joined table was created successfully",
+        4: "Check the most recent update date in the data",
+        5: "Confirm all analytical views are available",
+    },
+
+    "data_quality_checks.sql": {
+        1: "Check how many shortages successfully matched to NDC data",
+        2: "Check for missing package NDC values",
+        3: "Check for missing manufacturer names",
+        4: "Check for missing shortage status values",
+        5: "Check for duplicate shortage records",
+        6: "Check for invalid initial posting dates",
+        7: "Check for invalid update dates",
+        8: "Summary of shortages by status",
+        9: "Sample of shortages that did not match NDC data",
+    },
+
+    "03_analysis_queries.sql": {
+        1: "Analysis queries ran successfully and show join value",
+    },
+}
 
 # database connection
 def get_db_engine():
@@ -109,7 +149,8 @@ def run_sql_file(conn, file_path: str) -> tuple[list[str], bool]:
         if stmt.strip().upper().startswith("USE "):
             continue
 
-        lines.append(f"\n### Statement {i}")
+        title = STATEMENT_TITLES.get(p.name, {}).get(i, f"Statement {i}")
+        lines.append(f"\n### {title}")
         lines.append("```sql")
         lines.append(safe_sql_preview(stmt))
         lines.append("```")
@@ -253,6 +294,6 @@ def main() -> None:
     if had_failure:
         print("Monitoring completed with warnings. See monitoring_report.md for details.")
     return
-
+    print(f"Monitoring completed successfully. Report saved to {REPORT_MD}")
 if __name__ == "__main__":
     main()

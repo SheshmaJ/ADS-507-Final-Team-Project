@@ -35,6 +35,7 @@ ADS-507-Final-Team-Project/
 └── requirements.txt           # Python dependencies
 ```
 ---
+![Repository Structure](docs/repo_structure.png)
 ## Run the pipeline (one click)
 [![Run Pipeline](https://img.shields.io/badge/GitHub%20Actions-Run%20Pipeline-blue)](https://github.com/ngwalker93/ADS-507-Final-Team-Project/actions/workflows/pipeline_monitoring.yml)
 

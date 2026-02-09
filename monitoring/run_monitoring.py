@@ -7,7 +7,7 @@
 
 
 from __future__ import annotations
-
+# libraries
 import os
 from pathlib import Path
 from datetime import datetime
@@ -15,12 +15,15 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+# Directory where monitoring reports will be saved
 
 REPORT_DIR = Path("monitoring/reports")
 REPORT_MD = REPORT_DIR / "monitoring_report.md"
 REPORT_TXT = REPORT_DIR / "monitoring_report.txt"
 
-# Run ALL files: schema snapshot + health + quality + analysis queries
+# # SQL files executed as part of monitoring
+# These cover schema validation, pipeline health, data quality, and analysis
+
 SQL_FILES = [
     "monitoring/schema_snapshot.sql",
     "monitoring/pipeline_health.sql",
@@ -28,7 +31,7 @@ SQL_FILES = [
     "sql/03_analysis_queries.sql",
 ]
 
-
+# database connection
 def get_db_engine():
     user = os.getenv("DB_USER", "pipeline_user")
     password = os.getenv("DB_PASSWORD", "pipeline_password")
@@ -39,11 +42,11 @@ def get_db_engine():
     conn_str = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{db}"
     return create_engine(conn_str, pool_pre_ping=True)
 
-
+# split sql into executable statements
 def split_sql_into_statements(sql_text: str) -> list[str]:
     """
     Split SQL into executable statements.
-    - ignores blank lines + comment-only lines (--)
+    - ignores blank lines and comment
     - splits by ';'
     """
     statements: list[str] = []
@@ -68,7 +71,7 @@ def split_sql_into_statements(sql_text: str) -> list[str]:
 
     return statements
 
-
+# converts dataframe into markdown table
 def df_to_markdown(df: pd.DataFrame, max_rows: int = 25) -> str:
     if df.empty:
         return "_(no rows returned)_"
@@ -90,7 +93,7 @@ def run_sql_file(conn, file_path: str) -> tuple[list[str], bool]:
     lines.append(f"\n## Results from `{file_path}`")
 
     if not p.exists():
-        lines.append(f"❌ **FAIL:** Missing file `{file_path}`")
+        lines.append(f"FAIL: Missing file `{file_path}`")
         return lines, True
 
     sql_text = p.read_text(encoding="utf-8")
@@ -99,7 +102,7 @@ def run_sql_file(conn, file_path: str) -> tuple[list[str], bool]:
     statements = split_sql_into_statements(sql_text)
 
     if not statements:
-        lines.append("⚠️ **WARN:** No executable SQL statements found.")
+        lines.append("WARN: No executable SQL statements found.")
         return lines, False
 
     for i, stmt in enumerate(statements, start=1):
@@ -117,20 +120,24 @@ def run_sql_file(conn, file_path: str) -> tuple[list[str], bool]:
                 df = pd.DataFrame(result.fetchall(), columns=result.keys())
                 lines.append(df_to_markdown(df))
             else:
-                lines.append("✅ Executed (no rows returned).")
+                lines.append("Executed successfully (no rows returned).")
         except Exception as e:
-            lines.append(f"❌ **FAIL:** {type(e).__name__}: {e}")
+            lines.append(f"FAIL: {type(e).__name__}: {e}")
             failed = True
 
     return lines, failed
 
 
 def add_readable_summary(conn) -> list[str]:
-    """Human-friendly summary at the top of the report."""
+    
     lines: list[str] = []
-    lines.append("\n---\n# Summary (easy to read)")
+    lines.append("\n---\n# Monitoring Summary")
+    lines.append("\nThis section provides a high-level overview of the pipeline run, "
+        "including table row counts, join success between drug shortages and NDC data, "
+        "and key analytical insights.")
 
     # Row counts
+    
     counts = []
     for t in ["raw_ndc", "raw_ndc_packaging", "raw_drug_shortages", "shortages_with_ndc"]:
         try:
@@ -139,9 +146,13 @@ def add_readable_summary(conn) -> list[str]:
         except Exception:
             counts.append({"table": t, "rows": "N/A"})
     lines.append("\n## Row counts")
+    lines.append(
+        "\nThis table confirms that data was successfully loaded into each core table "
+        "after the ETL process completed.")
     lines.append(pd.DataFrame(counts).to_markdown(index=False))
 
     # Join success
+    
     join_df = pd.read_sql(
         text("""
         SELECT
@@ -153,10 +164,14 @@ def add_readable_summary(conn) -> list[str]:
         """),
         conn
     )
-    lines.append("\n## Join success (shortages → NDC)")
+    lines.append("\n## Join success:Drug shortages to NDC products")
+    lines.append(
+        "\nThis check measures how many drug shortage records were successfully "
+        "matched to NDC product information.")
     lines.append(df_to_markdown(join_df, max_rows=5))
 
     # Top manufacturers
+    
     manu_df = pd.read_sql(
         text("""
         SELECT company_name, current_affected_packages, current_affected_products
@@ -166,10 +181,12 @@ def add_readable_summary(conn) -> list[str]:
         """),
         conn
     )
-    lines.append("\n## Top manufacturers impacted (current shortages)")
+    lines.append("\n## Manufacturers Most impacted by current shortages")
+    lines.append("\nShows manufacturers with the highest number of affected products and packages.")
     lines.append(df_to_markdown(manu_df, max_rows=20))
 
     # Package types
+    
     pkg_df = pd.read_sql(
         text("""
         SELECT
@@ -194,6 +211,7 @@ def add_readable_summary(conn) -> list[str]:
 
     return lines
 
+#  Orchestrate database connection, SQL execution, and report generation.
 
 def main() -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)

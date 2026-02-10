@@ -1,6 +1,6 @@
 # FDA Pipeline Monitoring Report
 
-**Generated (UTC):** 2026-02-09 01:32:59
+**Generated (UTC):** 2026-02-10 06:41:51
 
 This report is generated automatically after the ETL pipeline run.
 
@@ -8,22 +8,30 @@ This report is generated automatically after the ETL pipeline run.
 
 
 ---
-# Summary (easy to read)
+# Monitoring Summary
+
+This section provides a high-level overview of the pipeline run, including table row counts, join success between drug shortages and NDC data, and key analytical insights.
 
 ## Row counts
+
+This table confirms that data was successfully loaded into each core table after the ETL process completed.
 | table              |   rows |
 |:-------------------|-------:|
-| raw_ndc            | 128780 |
-| raw_ndc_packaging  | 244838 |
-| raw_drug_shortages |   1750 |
-| shortages_with_ndc |   1750 |
+| raw_ndc            | 128746 |
+| raw_ndc_packaging  | 244893 |
+| raw_drug_shortages |   1747 |
+| shortages_with_ndc |   1747 |
 
-## Join success (shortages → NDC)
+## Join success:Drug shortages to NDC products
+
+This check measures how many drug shortage records were successfully matched to NDC product information.
 |   total_rows |   joined_rows |   unjoined_rows |   join_success_pct |
 |-------------:|--------------:|----------------:|-------------------:|
-|         1750 |          1578 |             172 |              90.17 |
+|         1747 |          1575 |             172 |              90.15 |
 
-## Top manufacturers impacted (current shortages)
+## Manufacturers Most impacted by current shortages
+
+Shows manufacturers with the highest number of affected products and packages.
 | company_name                        |   current_affected_packages |   current_affected_products |
 |:------------------------------------|----------------------------:|----------------------------:|
 | Hospira, Inc., a Pfizer Company     |                         168 |                         102 |
@@ -56,7 +64,7 @@ This report is generated automatically after the ETL pipeline run.
 
 ## Results from `monitoring/schema_snapshot.sql`
 
-### Statement 1
+### Check that all main tables were created
 ```sql
 SELECT table_name
 FROM information_schema.tables
@@ -72,7 +80,7 @@ ORDER BY table_name;
 | shortage_contacts  |
 | shortages_with_ndc |
 
-### Statement 2
+### Show table columns to confirm the database structure
 ```sql
 SELECT table_name, column_name, data_type, is_nullable
 FROM information_schema.columns
@@ -107,7 +115,7 @@ ORDER BY table_name, ordinal_position;
 | raw_drug_shortages         | company_name              | text        | YES           |
 | raw_drug_shortages         | status                    | varchar     | YES           |
 
-### Statement 3
+### Check that all required views exist
 ```sql
 SELECT table_name AS view_name
 FROM information_schema.views
@@ -121,7 +129,7 @@ ORDER BY table_name;
 | manufacturer_risk_analysis |
 | multi_package_shortages    |
 
-### Statement 4
+### View definition for current package shortages
 ```sql
 SHOW CREATE VIEW current_package_shortages;
 ```
@@ -129,7 +137,7 @@ SHOW CREATE VIEW current_package_shortages;
 |:--------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------|:-----------------------|
 | current_package_shortages | CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `current_package_shortages` AS select distinct `shortages_with_ndc`.`shortage_generic_name` AS `generic_name`,`shortages_with_ndc`.`company_name` AS `company_name`,`shortages_with_ndc`.`status` AS `status`,`shortages_with_ndc`.`product_ndc` AS `product_ndc`,`shortages_with_ndc`.`package_ndc` AS `package_ndc`,`shortages_with_ndc`.`package_description` AS `package_description`,`shortages_with_ndc`.`therapeutic_category` AS `therapeutic_category`,`shortages_with_ndc`.`initial_posting_date` AS `initial_posting_date`,`shortages_with_ndc`.`update_date` AS `update_date` from `shortages_with_ndc` where (`shortages_with_ndc`.`status` = 'Current') | cp850                  | cp850_general_ci       |
 
-### Statement 5
+### View definition for products with multiple affected packages
 ```sql
 SHOW CREATE VIEW multi_package_shortages;
 ```
@@ -137,7 +145,7 @@ SHOW CREATE VIEW multi_package_shortages;
 |:------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------|:-----------------------|
 | multi_package_shortages | CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `multi_package_shortages` AS select `shortages_with_ndc`.`product_ndc` AS `product_ndc`,`shortages_with_ndc`.`shortage_generic_name` AS `generic_name`,`shortages_with_ndc`.`company_name` AS `manufacturer`,count(distinct `shortages_with_ndc`.`package_ndc`) AS `affected_packages` from `shortages_with_ndc` where (`shortages_with_ndc`.`product_ndc` is not null) group by `shortages_with_ndc`.`product_ndc`,`shortages_with_ndc`.`shortage_generic_name`,`shortages_with_ndc`.`company_name` having (count(distinct `shortages_with_ndc`.`package_ndc`) > 1) | cp850                  | cp850_general_ci       |
 
-### Statement 6
+### View definition for manufacturer-level shortage risk
 ```sql
 SHOW CREATE VIEW manufacturer_risk_analysis;
 ```
@@ -145,7 +153,7 @@ SHOW CREATE VIEW manufacturer_risk_analysis;
 |:---------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------|:-----------------------|
 | manufacturer_risk_analysis | CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `manufacturer_risk_analysis` AS select `shortages_with_ndc`.`company_name` AS `company_name`,count(distinct `shortages_with_ndc`.`package_ndc`) AS `affected_packages`,count(distinct `shortages_with_ndc`.`product_ndc`) AS `affected_products`,count(distinct (case when (`shortages_with_ndc`.`status` = 'Current') then `shortages_with_ndc`.`package_ndc` end)) AS `current_shortage_packages` from `shortages_with_ndc` where (`shortages_with_ndc`.`company_name` is not null) group by `shortages_with_ndc`.`company_name` | cp850                  | cp850_general_ci       |
 
-### Statement 7
+### View definition for current manufacturer shortages
 ```sql
 SHOW CREATE VIEW current_manufacturer_risk;
 ```
@@ -153,7 +161,7 @@ SHOW CREATE VIEW current_manufacturer_risk;
 |:--------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------|:-----------------------|
 | current_manufacturer_risk | CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `current_manufacturer_risk` AS select `shortages_with_ndc`.`company_name` AS `company_name`,count(distinct `shortages_with_ndc`.`package_ndc`) AS `current_affected_packages`,count(distinct `shortages_with_ndc`.`product_ndc`) AS `current_affected_products` from `shortages_with_ndc` where ((`shortages_with_ndc`.`status` = 'Current') and (`shortages_with_ndc`.`company_name` is not null)) group by `shortages_with_ndc`.`company_name` | cp850                  | cp850_general_ci       |
 
-### Statement 8
+### Table structure for NDC product data (raw_ndc)
 ```sql
 SHOW CREATE TABLE raw_ndc;
 ```
@@ -176,7 +184,7 @@ SHOW CREATE TABLE raw_ndc;
 |         |   KEY `idx_brand` (`brand_name`(255))                              |
 |         | ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
 
-### Statement 9
+### Table structure for NDC packaging data
 ```sql
 SHOW CREATE TABLE raw_ndc_packaging;
 ```
@@ -192,7 +200,7 @@ SHOW CREATE TABLE raw_ndc_packaging;
 |                   |   CONSTRAINT `raw_ndc_packaging_ibfk_1` FOREIGN KEY (`product_ndc`) REFERENCES `raw_ndc` (`product_ndc`) ON DELETE CASCADE ON UPDATE CASCADE |
 |                   | ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci                                                                           |
 
-### Statement 10
+### Table structure for FDA drug shortage data
 ```sql
 SHOW CREATE TABLE raw_drug_shortages;
 ```
@@ -213,9 +221,9 @@ SHOW CREATE TABLE raw_drug_shortages;
 |                    |   KEY `idx_package_ndc` (`package_ndc`),                                               |
 |                    |   KEY `idx_status` (`status`),                                                         |
 |                    |   KEY `idx_company` (`company_name`(255))                                              |
-|                    | ) ENGINE=InnoDB AUTO_INCREMENT=1751 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
+|                    | ) ENGINE=InnoDB AUTO_INCREMENT=1748 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci |
 
-### Statement 11
+### Table structure for joined shortage and NDC data
 ```sql
 SHOW CREATE TABLE shortages_with_ndc;
 ```
@@ -255,7 +263,7 @@ SHOW CREATE TABLE shortages_with_ndc;
 
 ## Results from `monitoring/pipeline_health.sql`
 
-### Statement 2
+### Check that all main tables contain data
 ```sql
 SELECT
     table_name,
@@ -279,7 +287,7 @@ ORDER BY table_name;
 | shortage_contacts  | exists   |
 | shortages_with_ndc | exists   |
 
-### Statement 3
+### Confirm the joined table was created successfully
 ```sql
 SELECT 'raw_ndc' AS table_name, COUNT(*) AS row_count FROM raw_ndc
 UNION ALL
@@ -291,12 +299,12 @@ SELECT 'shortages_with_ndc', COUNT(*) FROM shortages_with_ndc;
 ```
 | table_name         |   row_count |
 |:-------------------|------------:|
-| raw_ndc            |      128780 |
-| raw_ndc_packaging  |      244838 |
-| raw_drug_shortages |        1750 |
-| shortages_with_ndc |        1750 |
+| raw_ndc            |      128746 |
+| raw_ndc_packaging  |      244893 |
+| raw_drug_shortages |        1747 |
+| shortages_with_ndc |        1747 |
 
-### Statement 4
+### Check the most recent update date in the data
 ```sql
 SELECT
     'shortages_with_ndc_status' AS check_name,
@@ -309,9 +317,9 @@ FROM shortages_with_ndc;
 ```
 | check_name                | result   |   row_count |
 |:--------------------------|:---------|------------:|
-| shortages_with_ndc_status | PASS     |        1750 |
+| shortages_with_ndc_status | PASS     |        1747 |
 
-### Statement 5
+### Confirm all analytical views are available
 ```sql
 SELECT
     'latest_update_date' AS metric,
@@ -346,7 +354,7 @@ ORDER BY table_name;
 
 ## Results from `monitoring/data_quality_checks.sql`
 
-### Statement 2
+### Check for missing package NDC values
 ```sql
 SELECT
     'ndc_join_coverage' AS metric,
@@ -361,9 +369,9 @@ FROM shortages_with_ndc;
 ```
 | metric            |   total_rows |   joined_rows |   unjoined_rows |   join_success_pct |
 |:------------------|-------------:|--------------:|----------------:|-------------------:|
-| ndc_join_coverage |         1750 |          1578 |             172 |              90.17 |
+| ndc_join_coverage |         1747 |          1575 |             172 |              90.15 |
 
-### Statement 3
+### Check for missing manufacturer names
 ```sql
 SELECT
     'missing_package_ndc' AS metric,
@@ -375,7 +383,7 @@ WHERE package_ndc IS NULL OR TRIM(package_ndc) = '';
 |:--------------------|--------------:|
 | missing_package_ndc |             0 |
 
-### Statement 4
+### Check for missing shortage status values
 ```sql
 SELECT
     'missing_company_name' AS metric,
@@ -387,7 +395,7 @@ WHERE company_name IS NULL OR TRIM(company_name) = '';
 |:---------------------|--------------:|
 | missing_company_name |             0 |
 
-### Statement 5
+### Check for duplicate shortage records
 ```sql
 SELECT
     'missing_status' AS metric,
@@ -399,7 +407,7 @@ WHERE status IS NULL OR TRIM(status) = '';
 |:---------------|--------------:|
 | missing_status |             0 |
 
-### Statement 6
+### Check for invalid initial posting dates
 ```sql
 SELECT
     'duplicate_shortage_ids' AS metric,
@@ -415,7 +423,7 @@ FROM (
 |:-----------------------|------------------:|
 | duplicate_shortage_ids |                 0 |
 
-### Statement 7
+### Check for invalid update dates
 ```sql
 SELECT
     'invalid_initial_posting_date_dt' AS metric,
@@ -430,7 +438,7 @@ WHERE initial_posting_date IS NOT NULL
 |:--------------------------------|----------------:|
 | invalid_initial_posting_date_dt |               0 |
 
-### Statement 8
+### Summary of shortages by status
 ```sql
 SELECT
     'invalid_update_date_dt' AS metric,
@@ -445,7 +453,7 @@ WHERE update_date IS NOT NULL
 |:-----------------------|----------------:|
 | invalid_update_date_dt |               0 |
 
-### Statement 9
+### Sample of shortages that did not match NDC data
 ```sql
 SELECT
     'status_summary' AS metric,
@@ -458,7 +466,7 @@ ORDER BY row_count DESC;
 | metric         | status             |   row_count |
 |:---------------|:-------------------|------------:|
 | status_summary | Current            |        1175 |
-| status_summary | To Be Discontinued |         519 |
+| status_summary | To Be Discontinued |         516 |
 | status_summary | Resolved           |          56 |
 
 ### Statement 10
@@ -476,21 +484,21 @@ LIMIT 15;
 ```
 |   shortage_id | package_ndc   | shortage_generic_name                    | company_name                            | status             |
 |--------------:|:--------------|:-----------------------------------------|:----------------------------------------|:-------------------|
-|          1745 | 83090-007-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1744 | 83090-006-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1743 | 83090-005-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1742 | 83090-004-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1741 | 83090-003-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1740 | 83090-002-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1739 | 83090-001-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
-|          1737 | 82497-025-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1736 | 82497-022-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1735 | 82497-020-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1734 | 82497-017-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1733 | 82497-015-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1732 | 82497-012-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1731 | 82497-010-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
-|          1712 | 76045-106-10  | Dexamethasone Sodium Phosphate Injection | Fresenius Kabi USA, LLC                 | Current            |
+|          1742 | 83090-007-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1741 | 83090-006-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1740 | 83090-005-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1739 | 83090-004-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1738 | 83090-003-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1737 | 83090-002-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1736 | 83090-001-10  | Lidocaine Hydrochloride Injection        | Sintetica US                            | Current            |
+|          1734 | 82497-025-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1733 | 82497-022-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1732 | 82497-020-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1731 | 82497-017-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1730 | 82497-015-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1729 | 82497-012-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1728 | 82497-010-04  | Methotrexate Injection                   | Assertio Specialty Pharmaceuticals, LLC | To Be Discontinued |
+|          1709 | 76045-106-10  | Dexamethasone Sodium Phosphate Injection | Fresenius Kabi USA, LLC                 | Current            |
 
 ## Results from `sql/03_analysis_queries.sql`
 
@@ -534,8 +542,8 @@ ORDER BY shortage_count DESC;
 ```
 | drug_type         |   shortage_count |   manufacturers_affected |   avg_days_in_shortage |
 |:------------------|-----------------:|-------------------------:|-----------------------:|
-| Branded Drug      |             1097 |                       90 |                   1982 |
-| Generic/Unbranded |               78 |                       22 |                   2207 |
+| Branded Drug      |             1101 |                       90 |                   1979 |
+| Generic/Unbranded |               74 |                       22 |                   2267 |
 
 ### Statement 4
 ```sql
@@ -582,8 +590,8 @@ ORDER BY current_shortages DESC;
 ```
 | product_type                |   current_shortages |   manufacturers |   avg_days_active |   longest_active_days |
 |:----------------------------|--------------------:|----------------:|------------------:|----------------------:|
-| HUMAN PRESCRIPTION DRUG     |                1097 |              90 |              1982 |                  5152 |
-| DRUG FOR FURTHER PROCESSING |                   9 |               1 |              1105 |                  1116 |
+| HUMAN PRESCRIPTION DRUG     |                1101 |              90 |              1979 |                  5153 |
+| DRUG FOR FURTHER PROCESSING |                   5 |               1 |              1097 |                  1117 |
 
 ### Statement 6
 ```sql
@@ -634,7 +642,7 @@ ORDER BY shortage_count DESC;
 | administration_route   |   shortage_count |   products_affected |
 |:-----------------------|-----------------:|--------------------:|
 | Intravenous            |              540 |                 416 |
-| Oral                   |              304 |                 263 |
+| Oral                   |              308 |                 267 |
 | Other                  |              249 |                 163 |
 | Inhalation             |                3 |                   3 |
 | Topical                |                1 |                   1 |
@@ -663,9 +671,9 @@ WHERE product_ndc IS NULL;
 ```
 | metric                   |   count |   percentage |
 |:-------------------------|--------:|-------------:|
-| Total Shortage Records   |    1750 |       100    |
-| Matched with NDC Data    |    1578 |        90.17 |
-| Unmatched (No NDC Found) |     172 |         9.83 |
+| Total Shortage Records   |    1747 |       100    |
+| Matched with NDC Data    |    1575 |        90.15 |
+| Unmatched (No NDC Found) |     172 |         9.85 |
 
 ### Statement 9
 ```sql
@@ -682,11 +690,11 @@ ORDER BY shortage_count DESC;
 ```
 | marketing_category                       |   shortage_count |   manufacturers |   products |
 |:-----------------------------------------|-----------------:|----------------:|-----------:|
-| ANDA                                     |              734 |              67 |        601 |
-| NDA                                      |              344 |              24 |        227 |
-| DRUG FOR FURTHER PROCESSING              |                9 |               1 |          7 |
+| ANDA                                     |              732 |              67 |        603 |
+| NDA                                      |              350 |              24 |        229 |
 | NDA AUTHORIZED GENERIC                   |                8 |               3 |          7 |
 | UNAPPROVED DRUG FOR USE IN DRUG SHORTAGE |                8 |               5 |          8 |
+| DRUG FOR FURTHER PROCESSING              |                5 |               1 |          3 |
 | BLA                                      |                2 |               1 |          2 |
 | UNAPPROVED DRUG OTHER                    |                1 |               1 |          1 |
 
@@ -712,31 +720,31 @@ LIMIT 50;
 ```
 | manufacturer                    | generic_name                                              | brand_name                              | ndc_labeler             | dosage_form                                                                                                                       | administration_route                                                               | package_description                                                                                                   | product_type            | posted_date   |   days_active |
 |:--------------------------------|:----------------------------------------------------------|:----------------------------------------|:------------------------|:----------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------|:------------------------|:--------------|--------------:|
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-02)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-02)  / 2 mL in 1 VIAL, SINGLE-DOSE (63323-806-12)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Atropine Sulfate Injection                                | Atropine Sulfate                        | Fresenius Kabi USA, LLC | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 63323-580-20)                                                                        | ['ENDOTRACHEAL', 'INTRAMEDULLARY', 'INTRAMUSCULAR', 'INTRAVENOUS', 'SUBCUTANEOUS'] | 10 VIAL, MULTI-DOSE in 1 TRAY (63323-580-20)  / 20 mL in 1 VIAL, MULTI-DOSE                                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-01)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-01)  / 1 mL in 1 VIAL, SINGLE-DOSE (63323-806-11)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-05)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-05)  / 5 mL in 1 VIAL, SINGLE-DOSE (63323-806-13)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-20)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-20)  / 20 mL in 1 VIAL, SINGLE-DOSE (63323-806-14)                        | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-50)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 1 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-50)  / 50 mL in 1 VIAL, SINGLE-DOSE                                        | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate, Injection, 50 ug/1 mL (NDC 63323-808-11)                                                                        | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 10 SYRINGE in 1 CARTON (63323-808-11)  / 1 mL in 1 SYRINGE (63323-808-01)                                             | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Medefil, Inc.                   | Atropine Sulfate Injection                                | Atropine Sulfate                        | Medefil, Inc.           | Atropine Sulfate, Injection, .1 mg/1 mL (NDC 64253-400-91)                                                                        | ['INTRAVENOUS']                                                                    | 10 SYRINGE, PLASTIC in 1 BOX (64253-400-91)  / 10 mL in 1 SYRINGE, PLASTIC (64253-400-30)                             | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Atropine Sulfate Injection                                | Atropine Sulfate                        | Hospira, Inc.           | Atropine Sulfate, Injection, 0.25 mg/5 mL (0.05 mg/mL) Syringes (NDC 0409-9630-05)                                                | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 PACKAGE (0409-9630-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-9630-15)   | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 2500 mcg/50 mL (50 ug/1 mL) (NDC 0409-9094-61)                                                       | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 CARTON in 1 TRAY (0409-9094-61)  / 1 VIAL, SINGLE-DOSE in 1 CARTON / 50 mL in 1 VIAL, SINGLE-DOSE (0409-9094-41)   | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 500 mcg/10 mL (50 ug/1 mL) (NDC 0409-9094-28)                                                        | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-28)  / 10 mL in 1 VIAL, SINGLE-DOSE (0409-9094-17)                          | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Accord Healthcare Inc.          | Atropine Sulfate Injection                                | Atropine Sulfate                        | Accord Healthcare Inc.  | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 16729-512-43)                                                                        | ['ENDOTRACHEAL', 'INTRAMEDULLARY', 'INTRAMUSCULAR', 'INTRAVENOUS', 'SUBCUTANEOUS'] | 10 CARTON in 1 BOX (16729-512-43)  / 1 VIAL, MULTI-DOSE in 1 CARTON (16729-512-05)  / 20 mL in 1 VIAL, MULTI-DOSE     | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Atropine Sulfate Injection                                | Atropine Sulfate                        | Hospira, Inc.           | Atropine Sulfate, Injection, 1 mg/10 mL (0.1 mg/mL) Syringes (NDC 0409-1630-10)                                                   | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 PACKAGE (0409-1630-10)  / 1 SYRINGE, PLASTIC in 1 CARTON / 10 mL in 1 SYRINGE, PLASTIC (0409-1630-15)  | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 250 mcg/5 mL (50 ug/1 mL) (NDC 0409-9094-25)                                                         | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-25)  / 5 mL in 1 VIAL, SINGLE-DOSE (0409-9094-18)                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 1000 mcg/20 mL (50 ug/1 mL) (NDC 0409-9094-31)                                                       | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-31)  / 20 mL in 1 VIAL, SINGLE-DOSE (0409-9094-16)                          | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| American Regent, Inc.           | Atropine Sulfate Injection                                | Atropine Sulfate                        | American Regent, Inc.   | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 0517-1004-25)                                                                        | ['INTRAVENOUS']                                                                    | 25 VIAL, GLASS in 1 TRAY (0517-1004-25)  / 1 mL in 1 VIAL, GLASS (0517-1004-01)                                       | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| American Regent, Inc.           | Atropine Sulfate Injection                                | Atropine Sulfate                        | American Regent, Inc.   | Atropine Sulfate, Injection, 1 mg/1 mL (NDC 0517-1001-25)                                                                         | ['INTRAVENOUS']                                                                    | 25 VIAL, GLASS in 1 TRAY (0517-1001-25)  / 1 mL in 1 VIAL, GLASS (0517-1001-01)                                       | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 100 mcg/2 mL (50 ug/1 mL) (NDC 0409-9094-22)                                                         | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-22)  / 2 mL in 1 VIAL, SINGLE-DOSE (0409-9094-12)                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5152 |
-| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride Preservative Free In Plastic Container, Injection, 100 mg/5mL (2%,20 mg/1 mL) Syringes (NDC 0409-1323-05) | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 CONTAINER (0409-1323-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-1323-15) | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride, Injection, 100 mg/5 mL (2%; 20 mg/mL) (NDC 0409-2066-05)                                                 | ['EPIDURAL', 'INFILTRATION', 'INTRACAUDAL', 'PERINEURAL']                          | 10 VIAL, SINGLE-DOSE in 1 CARTON (0409-2066-05)  / 5 mL in 1 VIAL, SINGLE-DOSE (0409-2066-10)                         | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride, Injection, 200 mg/10 mL (2%; 20 mg/mL) (NDC 0409-4282-02)                                                | ['EPIDURAL', 'INFILTRATION', 'INTRACAUDAL', 'PERINEURAL']                          | 25 AMPULE in 1 CARTON (0409-4282-02)  / 10 mL in 1 AMPULE (0409-4282-12)                                              | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Epinephrine Bitartrate, Lidocaine Hydrochloride Injection | Lidocaine Hydrochloride and Epinephrine | Hospira, Inc.           | Lidocaine Hydrochloride And Epinephrine, Injection, 75 mg/5 mL (1.5%; 1:200,000) (NDC 0409-1209-01)                               | ['EPIDURAL']                                                                       | 10 AMPULE in 1 TRAY (0409-1209-01)  / 5 mL in 1 AMPULE (0409-1209-10)                                                 | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Epinephrine Bitartrate, Lidocaine Hydrochloride Injection | Lidocaine Hydrochloride and Epinephrine | Hospira, Inc.           | Lidocaine Hydrochloride And Epinephrine, Injection, 2.5 g/50 mL (0.5%; 1:200,000) (NDC 0409-3177-01)                              | ['INFILTRATION', 'PERINEURAL']                                                     | 25 VIAL, MULTI-DOSE in 1 TRAY (0409-3177-01)  / 50 mL in 1 VIAL, MULTI-DOSE (0409-3177-16)                            | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride Preservative Free In Plastic Container, Injection, 50 mg/5mL (1%, 10 mg/1 mL) Syringes (NDC 0409-9137-05) | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 CONTAINER (0409-9137-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-9137-11) | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
-| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride In Plastic Container, Injection, 250 mg/50 mL (0.5%; 5 mg/mL) (NDC 0409-4275-01)                          | ['INFILTRATION', 'PERINEURAL']                                                     | 25 VIAL, MULTI-DOSE in 1 TRAY (0409-4275-01)  / 50 mL in 1 VIAL, MULTI-DOSE (0409-4275-16)                            | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5100 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-02)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-02)  / 2 mL in 1 VIAL, SINGLE-DOSE (63323-806-12)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Atropine Sulfate Injection                                | Atropine Sulfate                        | Fresenius Kabi USA, LLC | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 63323-580-20)                                                                        | ['ENDOTRACHEAL', 'INTRAMEDULLARY', 'INTRAMUSCULAR', 'INTRAVENOUS', 'SUBCUTANEOUS'] | 10 VIAL, MULTI-DOSE in 1 TRAY (63323-580-20)  / 20 mL in 1 VIAL, MULTI-DOSE                                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-01)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-01)  / 1 mL in 1 VIAL, SINGLE-DOSE (63323-806-11)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-05)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-05)  / 5 mL in 1 VIAL, SINGLE-DOSE (63323-806-13)                         | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-20)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-20)  / 20 mL in 1 VIAL, SINGLE-DOSE (63323-806-14)                        | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate Preservative Free, Injection, .05 mg/1 mL (NDC 63323-806-50)                                                     | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 1 VIAL, SINGLE-DOSE in 1 CARTON (63323-806-50)  / 50 mL in 1 VIAL, SINGLE-DOSE                                        | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Fresenius Kabi USA, LLC         | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Fresenius Kabi USA, LLC | Fentanyl Citrate, Injection, 50 ug/1 mL (NDC 63323-808-11)                                                                        | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 10 SYRINGE in 1 CARTON (63323-808-11)  / 1 mL in 1 SYRINGE (63323-808-01)                                             | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Medefil, Inc.                   | Atropine Sulfate Injection                                | Atropine Sulfate                        | Medefil, Inc.           | Atropine Sulfate, Injection, .1 mg/1 mL (NDC 64253-400-91)                                                                        | ['INTRAVENOUS']                                                                    | 10 SYRINGE, PLASTIC in 1 BOX (64253-400-91)  / 10 mL in 1 SYRINGE, PLASTIC (64253-400-30)                             | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Atropine Sulfate Injection                                | Atropine Sulfate                        | Hospira, Inc.           | Atropine Sulfate, Injection, 0.25 mg/5 mL (0.05 mg/mL) Syringes (NDC 0409-9630-05)                                                | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 PACKAGE (0409-9630-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-9630-15)   | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 2500 mcg/50 mL (50 ug/1 mL) (NDC 0409-9094-61)                                                       | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 CARTON in 1 TRAY (0409-9094-61)  / 1 VIAL, SINGLE-DOSE in 1 CARTON / 50 mL in 1 VIAL, SINGLE-DOSE (0409-9094-41)   | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 500 mcg/10 mL (50 ug/1 mL) (NDC 0409-9094-28)                                                        | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-28)  / 10 mL in 1 VIAL, SINGLE-DOSE (0409-9094-17)                          | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Accord Healthcare Inc.          | Atropine Sulfate Injection                                | Atropine Sulfate                        | Accord Healthcare Inc.  | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 16729-512-43)                                                                        | ['ENDOTRACHEAL', 'INTRAMEDULLARY', 'INTRAMUSCULAR', 'INTRAVENOUS', 'SUBCUTANEOUS'] | 10 CARTON in 1 BOX (16729-512-43)  / 1 VIAL, MULTI-DOSE in 1 CARTON (16729-512-05)  / 20 mL in 1 VIAL, MULTI-DOSE     | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Atropine Sulfate Injection                                | Atropine Sulfate                        | Hospira, Inc.           | Atropine Sulfate, Injection, 1 mg/10 mL (0.1 mg/mL) Syringes (NDC 0409-1630-10)                                                   | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 PACKAGE (0409-1630-10)  / 1 SYRINGE, PLASTIC in 1 CARTON / 10 mL in 1 SYRINGE, PLASTIC (0409-1630-15)  | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 250 mcg/5 mL (50 ug/1 mL) (NDC 0409-9094-25)                                                         | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-25)  / 5 mL in 1 VIAL, SINGLE-DOSE (0409-9094-18)                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 1000 mcg/20 mL (50 ug/1 mL) (NDC 0409-9094-31)                                                       | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-31)  / 20 mL in 1 VIAL, SINGLE-DOSE (0409-9094-16)                          | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| American Regent, Inc.           | Atropine Sulfate Injection                                | Atropine Sulfate                        | American Regent, Inc.   | Atropine Sulfate, Injection, .4 mg/1 mL (NDC 0517-1004-25)                                                                        | ['INTRAVENOUS']                                                                    | 25 VIAL, GLASS in 1 TRAY (0517-1004-25)  / 1 mL in 1 VIAL, GLASS (0517-1004-01)                                       | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| American Regent, Inc.           | Atropine Sulfate Injection                                | Atropine Sulfate                        | American Regent, Inc.   | Atropine Sulfate, Injection, 1 mg/1 mL (NDC 0517-1001-25)                                                                         | ['INTRAVENOUS']                                                                    | 25 VIAL, GLASS in 1 TRAY (0517-1001-25)  / 1 mL in 1 VIAL, GLASS (0517-1001-01)                                       | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Fentanyl Citrate Injection                                | Fentanyl Citrate                        | Hospira, Inc.           | Fentanyl Citrate, Injection, 100 mcg/2 mL (50 ug/1 mL) (NDC 0409-9094-22)                                                         | ['INTRAMUSCULAR', 'INTRAVENOUS']                                                   | 25 VIAL, SINGLE-DOSE in 1 TRAY (0409-9094-22)  / 2 mL in 1 VIAL, SINGLE-DOSE (0409-9094-12)                           | HUMAN PRESCRIPTION DRUG | 01/01/2012    |          5153 |
+| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride Preservative Free In Plastic Container, Injection, 100 mg/5mL (2%,20 mg/1 mL) Syringes (NDC 0409-1323-05) | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 CONTAINER (0409-1323-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-1323-15) | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride, Injection, 100 mg/5 mL (2%; 20 mg/mL) (NDC 0409-2066-05)                                                 | ['EPIDURAL', 'INFILTRATION', 'INTRACAUDAL', 'PERINEURAL']                          | 10 VIAL, SINGLE-DOSE in 1 CARTON (0409-2066-05)  / 5 mL in 1 VIAL, SINGLE-DOSE (0409-2066-10)                         | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride, Injection, 200 mg/10 mL (2%; 20 mg/mL) (NDC 0409-4282-02)                                                | ['EPIDURAL', 'INFILTRATION', 'INTRACAUDAL', 'PERINEURAL']                          | 25 AMPULE in 1 CARTON (0409-4282-02)  / 10 mL in 1 AMPULE (0409-4282-12)                                              | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Epinephrine Bitartrate, Lidocaine Hydrochloride Injection | Lidocaine Hydrochloride and Epinephrine | Hospira, Inc.           | Lidocaine Hydrochloride And Epinephrine, Injection, 75 mg/5 mL (1.5%; 1:200,000) (NDC 0409-1209-01)                               | ['EPIDURAL']                                                                       | 10 AMPULE in 1 TRAY (0409-1209-01)  / 5 mL in 1 AMPULE (0409-1209-10)                                                 | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Epinephrine Bitartrate, Lidocaine Hydrochloride Injection | Lidocaine Hydrochloride and Epinephrine | Hospira, Inc.           | Lidocaine Hydrochloride And Epinephrine, Injection, 2.5 g/50 mL (0.5%; 1:200,000) (NDC 0409-3177-01)                              | ['INFILTRATION', 'PERINEURAL']                                                     | 25 VIAL, MULTI-DOSE in 1 TRAY (0409-3177-01)  / 50 mL in 1 VIAL, MULTI-DOSE (0409-3177-16)                            | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride Preservative Free In Plastic Container, Injection, 50 mg/5mL (1%, 10 mg/1 mL) Syringes (NDC 0409-9137-05) | ['INTRAVENOUS']                                                                    | 10 CARTON in 1 CONTAINER (0409-9137-05)  / 1 SYRINGE, PLASTIC in 1 CARTON / 5 mL in 1 SYRINGE, PLASTIC (0409-9137-11) | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
+| Hospira, Inc., a Pfizer Company | Lidocaine Hydrochloride Injection                         | Lidocaine Hydrochloride                 | Hospira, Inc.           | Lidocaine Hydrochloride In Plastic Container, Injection, 250 mg/50 mL (0.5%; 5 mg/mL) (NDC 0409-4275-01)                          | ['INFILTRATION', 'PERINEURAL']                                                     | 25 VIAL, MULTI-DOSE in 1 TRAY (0409-4275-01)  / 50 mL in 1 VIAL, MULTI-DOSE (0409-4275-16)                            | HUMAN PRESCRIPTION DRUG | 02/22/2012    |          5101 |
 
 ### Statement 11
 ```sql
@@ -757,21 +765,21 @@ LIMIT 20;
 | company_name                           |   products_with_shortages |   total_ndc_portfolio |   shortage_rate_percent |
 |:---------------------------------------|--------------------------:|----------------------:|------------------------:|
 | Hospira, Inc., a Pfizer Company        |                       102 |                   432 |                   23.61 |
-| Fresenius Kabi USA, LLC                |                        91 |                   560 |                   16.25 |
+| Fresenius Kabi USA, LLC                |                        91 |                   563 |                   16.16 |
 | Hikma Pharmaceuticals USA, Inc.        |                        86 |                   789 |                   10.9  |
-| Eugia US LLC                           |                        48 |                   238 |                   20.17 |
+| Eugia US LLC                           |                        48 |                   237 |                   20.25 |
 | Teva Pharmaceuticals USA, Inc.         |                        40 |                  1347 |                    2.97 |
 | Baxter Healthcare                      |                        36 |                   380 |                    9.47 |
 | Pfizer Inc.                            |                        27 |                   688 |                    3.92 |
 | SpecGx LLC                             |                        19 |                   232 |                    8.19 |
-| Sun Pharmaceutical Industries, Inc.    |                        18 |                   801 |                    2.25 |
+| Sun Pharmaceutical Industries, Inc.    |                        18 |                   800 |                    2.25 |
 | Elite Laboratories, Inc.               |                        17 |                    75 |                   22.67 |
 | Lannett Company, Inc.                  |                        16 |                   185 |                    8.65 |
-| Aurobindo Pharma USA                   |                        15 |                  1427 |                    1.05 |
+| Aurobindo Pharma USA                   |                        15 |                  1428 |                    1.05 |
 | Accord Healthcare Inc.                 |                        14 |                   216 |                    6.48 |
 | Mylan Institutional, a Viatris Company |                        14 |                   169 |                    8.28 |
 | Takeda Pharmaceuticals USA Inc.        |                        13 |                   152 |                    8.55 |
-| Gland Pharma Limited                   |                        13 |                  1105 |                    1.18 |
+| Gland Pharma Limited                   |                        13 |                  1102 |                    1.18 |
 | Alvogen                                |                        12 |                    54 |                   22.22 |
 | Otsuka ICU Medical LLC                 |                        12 |                    60 |                   20    |
 | Solco Healthcare US, LLC               |                        11 |                   143 |                    7.69 |

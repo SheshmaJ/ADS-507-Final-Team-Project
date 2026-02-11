@@ -48,24 +48,23 @@ STATEMENT_TITLES = {
 
     "pipeline_health.sql": {
         1: "Confirm required tables exist after the pipeline run",
-        2: "Check that all main tables contain data",
-        3: "Confirm the joined table was created successfully",
-        4: "Check the most recent update date in the data",
-        5: "Confirm all analytical views are available",
-        6: "Verify analytical views are available and queryable",
+        2: "Verify Row Counts for Core Tables",
+        3: "Validate Shortages Table Contains Data",
+        4: "Check Most Recent Update Date in Dataset",
+        5: "Confirm Analytical Views Are Available and Queryable",
     },
 
     "data_quality_checks.sql": {
-        1: "Check how many shortages successfully matched to NDC data",
-        2: "Check for missing package NDC values",
-        3: "Check for missing manufacturer names",
-        4: "Check for missing shortage status values",
-        5: "Check for duplicate shortage records",
-        6: "Check for invalid initial posting dates",
-        7: "Check for invalid update dates",
-        8: "Summary of shortages by status",
-        9: "Sample of shortages that did not match NDC data",
-        10: "List recent shortages missing NDC matches",
+        1: "NDC Join Coverage Summary",
+        2: "Check for Missing Package NDC Values",
+        3: "Check for Missing Company Names",
+        4: "Check for Missing Shortage Status Values",
+        5: "Check for Duplicate Shortage Records",
+        6: "Check for Invalid Initial Posting Dates",
+        7: "Check for Invalid Update Dates",
+        8: "Summary of Shortages by Status",
+        9: "Sample of Unmatched Shortages",
+        10: "List Recent Shortages Missing NDC Matches",
     },
 
     "03_analysis_queries.sql": {
@@ -80,6 +79,7 @@ STATEMENT_TITLES = {
         9: "Longest active shortages with with full product and manufacturer details.",
         10: "Manufacturer shortage rate vs their product portfolio size",
         11: "Confirms that all analysis queries ran successfully",
+        12: "Final Validation: All Analysis Queries Executed Successfully",
     },
 }
 
@@ -217,7 +217,7 @@ def add_readable_summary(conn) -> list[str]:
         """),
         conn
     )
-    lines.append("\n## Join success:Drug shortages to NDC products")
+    lines.append("\n## Join success between Drug shortages and NDC products")
     lines.append(
         "\nThis check measures how many drug shortage records were successfully "
         "matched to NDC product information.")
@@ -259,7 +259,7 @@ def add_readable_summary(conn) -> list[str]:
         """),
         conn
     )
-    lines.append("\n## Package types most affected (current)")
+    lines.append("\n## Package types most affected (current shortages)")
     lines.append(df_to_markdown(pkg_df, max_rows=20))
 
     return lines

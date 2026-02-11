@@ -47,7 +47,7 @@ STATEMENT_TITLES = {
     },
 
     "pipeline_health.sql": {
-        1. "Confirm Required Core Tables Exist",
+        1: "Confirm Required Core Tables Exist",
         2: "Confirm required tables exist after the pipeline run",
         3: "Verify Row Counts for Core Tables",
         4: "Validate Shortages Table Contains Data",

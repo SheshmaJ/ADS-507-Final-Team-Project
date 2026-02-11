@@ -47,11 +47,12 @@ STATEMENT_TITLES = {
     },
 
     "pipeline_health.sql": {
-        1: "Confirm required tables exist after the pipeline run",
-        2: "Verify Row Counts for Core Tables",
-        3: "Validate Shortages Table Contains Data",
-        4: "Check Most Recent Update Date in Dataset",
-        5: "Confirm Analytical Views Are Available and Queryable",
+        1. "Confirm Required Core Tables Exist",
+        2: "Confirm required tables exist after the pipeline run",
+        3: "Verify Row Counts for Core Tables",
+        4: "Validate Shortages Table Contains Data",
+        5: "Check Most Recent Update Date in Dataset",
+        6: "Confirm Analytical Views Are Available and Queryable",
     },
 
     "data_quality_checks.sql": {

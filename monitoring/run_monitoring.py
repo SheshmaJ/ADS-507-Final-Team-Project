@@ -52,6 +52,7 @@ STATEMENT_TITLES = {
         3: "Confirm the joined table was created successfully",
         4: "Check the most recent update date in the data",
         5: "Confirm all analytical views are available",
+        6: "Verify analytical views are available and queryable",
     },
 
     "data_quality_checks.sql": {
@@ -64,10 +65,21 @@ STATEMENT_TITLES = {
         7: "Check for invalid update dates",
         8: "Summary of shortages by status",
         9: "Sample of shortages that did not match NDC data",
+        10: "List recent shortages missing NDC matches",
     },
 
     "03_analysis_queries.sql": {
-        1: "Analysis queries ran successfully and show join value",
+        1: "Top manufacturers by current shortage risk",
+        2: "Branded vs generic drug shortages",
+        3: "Products with multiple affected packages",
+        4: "Shortages by product type",
+        5: "Shortages by package type",
+        6: "Shortages by administration route",
+        7: "Overall join coverage summary",
+        8: "Marketing category impact analysis",
+        9: "Longest active shortages with with full product and manufacturer details.",
+        10: "Manufacturer shortage rate vs their product portfolio size",
+        11: "Confirms that all analysis queries ran successfully",
     },
 }
 

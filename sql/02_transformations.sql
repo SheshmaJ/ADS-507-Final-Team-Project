@@ -1,5 +1,4 @@
 -- ============================================
--- SQL Transformations - CRITICAL FOR RUBRIC
 -- This file contains the required SQL transformation:
 -- Joins drug shortages with NDC data to create enriched dataset
 -- MAIN TRANSFORMATION: Join Shortages with NDC Data
@@ -175,7 +174,7 @@ GROUP BY company_name;
 
 
 -- ============================================
--- Verification Queries
+-- Verification Queries for enriched tables
 -- ============================================
 
 -- Check the main enriched table

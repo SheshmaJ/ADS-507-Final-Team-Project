@@ -3,21 +3,12 @@ STREAMLIT DASHBOARD APPLICATION
 This module initializes and runs the Streamlit dashboard application.
 """
 
-
-#Our main focus is to answer
-#Which manufacturers have the highest shortage risk?
-#Do branded drugs have longer shortage durations than generics?
-#Which package types are most vulnerable to shortages?
-
-
-
-
 import os
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine, text
 
-# Page setup 
+# Page setup
 st.set_page_config(page_title="FDA Shortage Dashboard", layout="wide")
 st.title("FDA Drug Shortage Monitoring Dashboard")
 st.caption("Interactive dashboard for FDA drug shortages")
@@ -44,8 +35,9 @@ engine = get_engine()
 def q(sql, params=None):
     return pd.read_sql(text(sql), engine, params=params or {})
 
-
-# Sidebar filters
+# ---------------------------
+# Sidebar Filters
+# ---------------------------
 
 st.sidebar.header("Filters")
 only_current = st.sidebar.checkbox("Only current shortages", True)
@@ -67,26 +59,35 @@ dose = st.sidebar.selectbox("Dosage form", ["All"] + dosages)
 ther = st.sidebar.selectbox("Therapeutic category", ["All"] + therapeutics)
 limit_rows = st.sidebar.slider("Detail rows", 50, 1000, 200, 50)
 
-filters, params = [], {}
+filters = []
+params = {}
+
 if only_current:
     filters.append("status='Current'")
+
 if mfg != "All":
     filters.append("company_name=:mfg")
     params["mfg"] = mfg
+
 if route != "All":
     filters.append("route=:route")
     params["route"] = route
+
 if dose != "All":
     filters.append("shortage_dosage_form=:dose")
     params["dose"] = dose
+
 if ther != "All":
     filters.append("therapeutic_category=:ther")
     params["ther"] = ther
 
-where = "WHERE " + " AND ".join(filters) if filters else ""
+where_clause = ""
+if filters:
+    where_clause = "WHERE " + " AND ".join(filters)
 
-
+# ---------------------------
 # KPIs
+# ---------------------------
 
 kpi = q(
     """
@@ -107,8 +108,9 @@ c4.metric("Packages affected", f"{int(kpi.packages):,}")
 
 st.divider()
 
-
-# 1) Manufacturer risk
+# ---------------------------
+# 1) Manufacturer Risk
+# ---------------------------
 
 st.subheader("1) Manufacturer Impact Analysis")
 
@@ -129,10 +131,11 @@ c2.bar_chart(df_manu.set_index("company_name")[["current_affected_packages"]])
 
 st.divider()
 
-
+# ---------------------------
 # 2) Branded vs Generic
+# ---------------------------
 
-st.subheader("2) Branded vs Generic Shortage Duration(use filter)")
+st.subheader("2) Branded vs Generic Shortage Duration (use filter)")
 
 df_brand = q(
     f"""
@@ -140,12 +143,12 @@ df_brand = q(
       CASE
         WHEN brand_name IS NOT NULL AND brand_name<>'' THEN 'Branded'
         ELSE 'Generic/Unbranded'
-      END drug_type,
-      COUNT(*) shortage_count,
-      ROUND(AVG(DATEDIFF(CURDATE(),initial_posting_date_dt)),1) AS avg_days_active
+      END AS drug_type,
+      COUNT(*) AS shortage_count,
+      ROUND(AVG(DATEDIFF(CURDATE(), initial_posting_date_dt)),1) AS avg_days_active
     FROM shortages_with_ndc
-    {where}
-    AND initial_posting_date_dt IS NOT NULL
+    {where_clause}
+    {"AND" if filters else "WHERE"} initial_posting_date_dt IS NOT NULL
     GROUP BY drug_type;
     """,
     params,
@@ -158,10 +161,11 @@ if not df_brand.empty:
 
 st.divider()
 
+# ---------------------------
+# 3) Package Vulnerability
+# ---------------------------
 
-# 3) Package vulnerability
-
-st.subheader("3) Packaging Types Most Affected(use filter)")
+st.subheader("3) Packaging Types Most Affected (use filter)")
 
 df_pkg = q(
     f"""
@@ -172,11 +176,11 @@ df_pkg = q(
         WHEN LOWER(package_description) LIKE '%blister%' THEN 'Blister'
         WHEN LOWER(package_description) LIKE '%carton%' THEN 'Carton'
         ELSE 'Other'
-      END package_type,
-      COUNT(*) shortage_count
+      END AS package_type,
+      COUNT(*) AS shortage_count
     FROM shortages_with_ndc
-    {where}
-    AND package_description IS NOT NULL
+    {where_clause}
+    {"AND" if filters else "WHERE"} package_description IS NOT NULL
     GROUP BY package_type
     ORDER BY shortage_count DESC;
     """,
@@ -189,8 +193,9 @@ c2.bar_chart(df_pkg.set_index("package_type"))
 
 st.divider()
 
-
-# Detailes shortage details
+# ---------------------------
+# Detailed Drilldown
+# ---------------------------
 
 st.subheader("Detailed Shortage Records")
 

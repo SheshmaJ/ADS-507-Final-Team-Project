@@ -5,9 +5,10 @@ Interactive dashboard displaying shortage metrics and insights
 
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine
 import plotly.express as px
-import plotly.graph_objects as go
+
+from config import get_engine
+
 
 # ============================================
 # Page Configuration
@@ -24,25 +25,14 @@ st.set_page_config(
 # Database Connection
 # ============================================
 
+
+
 @st.cache_resource
-def get_database_connection():
-    """Create cached database connection"""
-    
-    # Database credentials - UPDATE THESE
-    DB_USER = 'root'
-    DB_PASSWORD = 'your_password'  # CHANGE THIS!
-    DB_HOST = 'localhost'
-    DB_PORT = '3306'
-    DB_NAME = 'fda_shortage_db'
-    
-    connection_string = f'mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-    
-    try:
-        engine = create_engine(connection_string)
-        return engine
-    except Exception as e:
-        st.error(f"Database connection error: {e}")
-        st.stop()
+def get_cached_engine():
+    """Return a cached SQLAlchemy engine for the Streamlit session."""
+    return get_engine()
+
+engine = get_cached_engine()
 
 # ============================================
 # Data Loading Functions
@@ -159,8 +149,7 @@ def main():
     with drug shortage data to reveal insights not possible from either dataset alone.
     """)
     
-    # Get database connection
-    engine = get_database_connection()
+    
     
     # Sidebar filters
     st.sidebar.header("Dashboard Controls")

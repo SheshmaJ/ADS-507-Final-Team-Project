@@ -17,9 +17,10 @@ build/
 
 # Environment
 .env
-.venv
+.venv/
 venv/
 env/
+pipeline.log
 
 # IDE
 .vscode/

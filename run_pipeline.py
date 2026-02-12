@@ -7,17 +7,23 @@
 # run_pipeline.py
 from __future__ import annotations
 
+import cmd
 import os
 import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
 
+from dotenv import load_dotenv
+load_dotenv()
+
 REPORT_DIR = Path("monitoring/reports")
 PIPELINE_LOG = REPORT_DIR / "pipeline.log"
 
+def log_line(msg: str, mask: bool = False) -> None:
+    if mask:
+        msg = "[mysql command hidden]"
 
-def log_line(msg: str) -> None:
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp} UTC] {msg}"
     print(line)
@@ -27,7 +33,8 @@ def log_line(msg: str) -> None:
 
 
 def run(cmd: str) -> None:
-    log_line(f"RUN: {cmd}")
+    is_mysql = cmd.strip().startswith("mysql")
+    log_line(f"RUN: {cmd}", mask=is_mysql)
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     # write stdout/stderr into log file
@@ -39,7 +46,7 @@ def run(cmd: str) -> None:
             f.write(result.stderr + "\n")
 
     if result.returncode != 0:
-        log_line(f"FAILED (exit {result.returncode}): {cmd}")
+        log_line(f"FAILED (exit {result.returncode}): {cmd}", mask=is_mysql)
         raise subprocess.CalledProcessError(result.returncode, cmd)
 
 
@@ -51,21 +58,19 @@ def main() -> None:
     log_line("Starting FDA ETL pipeline")
 
     try:
-        run("python scripts/download_data.py")
-        run("python scripts/process_data.py")
-        run("python scripts/load_to_mysql.py")
+        run("python -m scripts.download_data")
+        run("python -m scripts.process_data")
+        run("python -m scripts.load_to_mysql")
 
-        # SQL transformations
-        host = os.environ["DB_HOST"]
-        port = os.environ["DB_PORT"]
-        user = os.environ["DB_USER"]
-        pwd = os.environ["DB_PASSWORD"]
-        db = os.environ["DB_NAME"]
+        # SQL transformations. Read in from the .env for connection details (instead of hardcoding in the SQL file)
+        port = os.getenv("DB_PORT")
+        user = os.getenv("DB_USER")
+        pwd = os.getenv("DB_PASSWORD")
+        host = os.getenv("DB_HOST")
+        db = os.getenv("DB_NAME")
 
-        run(
-            f'mysql -h "{host}" -P "{port}" -u "{user}" -p"{pwd}" "{db}" < sql/02_transformations.sql'
-        )
-
+        run(f'mysql -h "{host}" -P "{port}" -u "{user}" -p"{pwd}" "{db}" < sql/02_transformations.sql')
+    
         log_line("ETL pipeline completed successfully.")
 
     except subprocess.CalledProcessError:

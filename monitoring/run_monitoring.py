@@ -13,7 +13,8 @@ from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+from config import get_engine
 
 # Directory where monitoring reports will be saved
 
@@ -86,16 +87,7 @@ STATEMENT_TITLES = {
     },
 }
 
-# database connection
-def get_db_engine():
-    user = os.getenv("DB_USER", "pipeline_user")
-    password = os.getenv("DB_PASSWORD", "pipeline_password")
-    host = os.getenv("DB_HOST", "127.0.0.1")
-    port = os.getenv("DB_PORT", "3306")
-    db = os.getenv("DB_NAME", "fda_shortage_db")
 
-    conn_str = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{db}"
-    return create_engine(conn_str, pool_pre_ping=True)
 
 # split sql into executable statements
 def split_sql_into_statements(sql_text: str) -> list[str]:
@@ -283,7 +275,7 @@ def main() -> None:
         "",
     ]
 
-    engine = get_db_engine()
+    engine = get_engine()
     report_lines = header
     had_failure = False
 
@@ -308,7 +300,8 @@ def main() -> None:
 
     if had_failure:
         print("Monitoring completed with warnings. See monitoring_report.md for details.")
-    return
-    print(f"Monitoring completed successfully. Report saved to {REPORT_MD}")
+    else:
+        print(f"Monitoring completed successfully. Report saved to {REPORT_MD}")
+    
 if __name__ == "__main__":
     main()

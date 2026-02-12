@@ -6,31 +6,22 @@ This module initializes and runs the Streamlit dashboard application.
 import os
 import pandas as pd
 import streamlit as st
-from sqlalchemy import create_engine, text
+from config import get_engine
+from sqlalchemy import text
+
 
 # Page setup
 st.set_page_config(page_title="FDA Shortage Dashboard", layout="wide")
 st.title("FDA Drug Shortage Monitoring Dashboard")
 st.caption("Interactive dashboard for FDA drug shortages")
 
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "fda_shortage_db")
-
-if not DB_PASSWORD:
-    st.error("DB_PASSWORD is not set")
-    st.stop()
-
+# Streamlit caching wrappers to optimize database connections and queries
 @st.cache_resource
-def get_engine():
-    return create_engine(
-        f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
-        pool_pre_ping=True,
-    )
+def get_cached_engine():
+    return get_engine()
 
-engine = get_engine()
+engine = get_cached_engine()
+
 
 def q(sql, params=None):
     return pd.read_sql(text(sql), engine, params=params or {})

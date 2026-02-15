@@ -28,7 +28,7 @@ This project builds a MySQL-based data pipeline that combines two FDA datasets (
 Before running the pipeline, ensure you have:
 
 1. **Python 3.8+** installed
-   - Check: `python --version`
+   - Check: `python3 --version` (macOS/Linux) / `python --version` (Windows)
    - Download: https://www.python.org/downloads/
 
 2. **MySQL Server** installed and running
@@ -49,22 +49,64 @@ cd ADS-507-Final-Team-Project
 ```
 ## Step 2: Create and Activate Virtual Environment
 
-### Create venv
-```powershell
-python -m venv .venv
+### Create venv MacOS/Linux
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ````
 
-### **Activate (PowerShell):**
+### Create venv Windows (PowerShell)
+```powershell
+python -m venv .venv
+```
+
 > If activation is blocked, run the ExecutionPolicy command first.
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
+## Step 3: Configure Environment Variables 
+This project uses environment variables to securely manage database credentials.
+Database passwords are not stored in the source code
 
-## Step 3: Install Python Dependencies
+### Create a .env file 
+In the root directory of the project create a file named: 
 
+```
+.env
+```
+
+Create manually or copy the template 
+
+#### macOS/Linux
+```bash
+cp .env.example .env
+```
+#### Windows (PowerShell)
 ```powershell
+Copy-Item .env.example .env
+``` 
+
+### Replace the values with your local MySQL credentials
+
+Add the following variables: 
+```
+DB_USER=your_mysql_username
+DB_PASSWORD=your_mysql_password
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=fda_shortage_db
+```
+
+**DO NOT Commit** .env
+The file is excluded from version control via .gitignore because it contains sensitive credentials.
+
+The pipeline loads `.env` automatically via `python-dotenv` (no manual export needed).
+
+## Step 4: Install Python Dependencies
+
+```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
@@ -78,6 +120,12 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS fda_shortage_db;"
 
 ### Phase 2: Create Database Tables
 
+#### macOS/Linux 
+```bash 
+mysql -u root -p fda_shortage_db < sql/01_create_tables.sql
+```
+
+#### Windows (PowerShell)
 ```powershell
 Get-Content .\sql\01_create_tables.sql | mysql -u root -p fda_shortage_db
 ```
@@ -88,7 +136,7 @@ Creates 4 raw tables:raw_ndc, raw_ndc_packaging, raw_drug_shortages,shortage_con
 ### Phase 3: Download Raw FDA Data
 
 ```powershell
-python .\scripts\download_data.py
+python -m scripts.download_data
 
 ```
 
@@ -102,7 +150,7 @@ data/drug_shortages_raw.json**
 ### Phase 4: Process and Clean Data
 
 ```powershell
-python .\scripts\process_data.py
+python -m scripts.process_data
 
 ```
 
@@ -117,16 +165,22 @@ data/shortage_contacts.csv**
 ### Phase 5: Load Data into MySQL
 
 ```powershell
-python scripts/load_to_mysql.py
+python -m scripts.load_to_mysql
 ```
 
 *Expected output
 Loads CSVs into MySQL tables,Clears existing rows safely,Verifies row counts after load*
 
 ### Phase 6: Run SQL Transformations
+
+#### macOS/Linux
+```bash
+mysql -u root -p fda_shortage_db < sql/02_transformations.sql
+```
+
+#### Windows (PowerShell)
 ```powershell
 Get-Content .\sql\02_transformations.sql | mysql -u root -p fda_shortage_db
-
 ```
 
 *Expected output:
@@ -135,7 +189,7 @@ Joins shortages with NDC data,Creates enriched views for analysis,current_packag
 ### Phase 7:Run monitoring checks
 
 ```powershell
-python .\monitoring\run_monitoring.py
+python -m monitoring.run_monitoring
 
 ```
 **Expected result:** Running this script generates monitoring reports and saves them to the `monitoring/reports/` folder.
@@ -144,15 +198,7 @@ python .\monitoring\run_monitoring.py
   
 ### Phase 8:Run the Streamlit dashboard (local)
 
-### Set DB environment variables (PowerShell)
-
-```powershell
-$env:DB_USER="root"
-$env:DB_PASSWORD="**YOUR_MYSQL_PASSWORD**"
-$env:DB_HOST="127.0.0.1"
-$env:DB_PORT="3306"
-$env:DB_NAME="fda_shortage_db"
-```
+Ensure your .env file is configured (see Step 3).
 
 ### Start the dashboard
 

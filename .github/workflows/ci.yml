@@ -1,5 +1,5 @@
 #CI workflow
-#This work flow will provide continuous intergration for the repository by
+#This work flow will provide continuous integration for the repository by
 #running a python linter on every push and pull request to the main branch.
 #or by manual trigger.
 #This workflow uses the popular pylint linter to check for code quality
@@ -33,6 +33,6 @@ jobs:
           pip install -r requirements.txt
           pip install ruff
 
-      #- name: Run linter (ruff)
-       # run: |
-       #   ruff check .
+      - name: Run linter (ruff)
+        run: |
+          ruff check .
